@@ -168,7 +168,9 @@ impl Remote for RemoteResource {
             let stream = &self.stream;
             match stream.deref().read(&mut input_buffer) {
                 Ok(0) => break ReadStatus::Disconnected,
-                Ok(size) => process_data(&input_buffer[..size]),
+                Ok(size) => {
+                    process_data(&input_buffer[..size]);
+                },
                 Err(ref err) if err.kind() == ErrorKind::Interrupted => continue,
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => {
                     break ReadStatus::WaitNextEvent
