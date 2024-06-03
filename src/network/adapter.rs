@@ -34,10 +34,50 @@ pub trait Resource: Send + Sync {
 }
 
 
+
+#[derive(Debug)]
 pub enum NetworkAddr {
     IP(SocketAddr),
     #[cfg(feature = "unixsocket")]
-    Unix(mio::net::SocketAddr)
+    Unix(mio::net::SocketAddr),
+    #[cfg(feature = "websocket")]
+    WebSocket(url::Url),
+}
+
+impl PartialEq for NetworkAddr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::IP(l0), Self::IP(r0)) => l0 == r0,
+            (Self::Unix(l0), Self::Unix(r0)) => {
+                // this might not check if family is same
+                l0.as_pathname() == r0.as_pathname()
+            },
+            (Self::WebSocket(l0), Self::WebSocket(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl Clone for NetworkAddr {
+    fn clone(&self) -> Self {
+        match self {
+            Self::IP(arg0) => Self::IP(arg0.clone()),
+            Self::Unix(arg0) => Self::Unix(arg0.clone()),
+            Self::WebSocket(arg0) => Self::WebSocket(arg0.clone()),
+        }
+    }
+}
+
+impl From<SocketAddr> for NetworkAddr {
+    fn from(addr: SocketAddr) -> Self {
+        Self::IP(addr)
+    }
+}
+
+impl From<mio::net::SocketAddr> for NetworkAddr {
+    fn from(addr: mio::net::SocketAddr) -> Self {
+        Self::Unix(addr)
+    }
 }
 
 /// Plain struct used as a returned value of [`Remote::connect_with()`]
@@ -46,10 +86,10 @@ pub struct ConnectionInfo<R: Remote> {
     pub remote: R,
 
     /// Local address of the interal resource used.
-    pub local_addr: SocketAddr,
+    pub local_addr: NetworkAddr,
 
     /// Peer address of the interal resource used.
-    pub peer_addr: SocketAddr,
+    pub peer_addr: NetworkAddr,
 }
 
 /// Plain struct used as a returned value of [`Local::listen_with()`]
@@ -58,7 +98,7 @@ pub struct ListeningInfo<L: Local> {
     pub local: L,
 
     /// Local address generated after perform the listening action.
-    pub local_addr: SocketAddr,
+    pub local_addr: NetworkAddr,
 }
 
 /// The following represents the posible status that [`crate::network::NetworkController::send()`]

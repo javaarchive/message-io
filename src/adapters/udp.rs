@@ -178,7 +178,7 @@ impl Remote for RemoteResource {
 
         let socket = UdpSocket::from_std(socket.into());
         let local_addr = socket.local_addr()?;
-        Ok(ConnectionInfo { remote: RemoteResource { socket }, local_addr, peer_addr })
+        Ok(ConnectionInfo { remote: RemoteResource { socket }, local_addr: local_addr.into(), peer_addr: peer_addr.into() })
     }
 
     fn receive(&self, mut process_data: impl FnMut(&[u8])) -> ReadStatus {
@@ -409,7 +409,7 @@ impl Local for LocalResource {
                     ingress_addresses,
                 }
             },
-            local_addr,
+            local_addr: local_addr.into(),
         })
     }
 

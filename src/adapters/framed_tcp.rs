@@ -93,8 +93,8 @@ impl Remote for RemoteResource {
         let local_addr = stream.local_addr()?;
         Ok(ConnectionInfo {
             remote: RemoteResource::new(stream, config.keepalive),
-            local_addr,
-            peer_addr,
+            local_addr: local_addr.into(),
+            peer_addr: peer_addr.into(),
         })
     }
 
@@ -203,7 +203,7 @@ impl Local for LocalResource {
         let local_addr = listener.local_addr().unwrap();
         Ok(ListeningInfo {
             local: { LocalResource { listener, keepalive: config.keepalive } },
-            local_addr,
+            local_addr: local_addr.into(),
         })
     }
 

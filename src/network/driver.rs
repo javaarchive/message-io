@@ -3,7 +3,7 @@ use super::resource_id::{ResourceId, ResourceType};
 use super::poll::{Poll, Readiness};
 use super::registry::{ResourceRegistry, Register};
 use super::remote_addr::{RemoteAddr};
-use super::adapter::{Adapter, Remote, Local, SendStatus, AcceptedType, ReadStatus, PendingStatus};
+use super::adapter::{AcceptedType, Adapter, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, SendStatus};
 use super::transport::{TransportConnect, TransportListen};
 
 use std::net::{SocketAddr};
@@ -89,13 +89,13 @@ pub trait EventProcessor: Send + Sync {
 }
 
 struct RemoteProperties {
-    peer_addr: SocketAddr,
+    peer_addr: NetworkAddr,
     local: Option<ResourceId>,
     ready: AtomicBool,
 }
 
 impl RemoteProperties {
-    fn new(peer_addr: SocketAddr, local: Option<ResourceId>) -> Self {
+    fn new(peer_addr: NetworkAddr, local: Option<ResourceId>) -> Self {
         Self { peer_addr, local, ready: AtomicBool::new(false) }
     }
 

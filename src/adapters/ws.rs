@@ -108,8 +108,8 @@ impl Remote for RemoteResource {
                     stream.into(),
                 )))),
             },
-            local_addr,
-            peer_addr,
+            local_addr: local_addr.into(),
+            peer_addr: peer_addr.into(),
         })
     }
 
@@ -335,7 +335,7 @@ impl Local for LocalResource {
     fn listen_with(_: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
         let listener = TcpListener::bind(addr)?;
         let local_addr = listener.local_addr().unwrap();
-        Ok(ListeningInfo { local: LocalResource { listener }, local_addr })
+        Ok(ListeningInfo { local: LocalResource { listener }, local_addr: local_addr.into() })
     }
 
     fn accept(&self, mut accept_remote: impl FnMut(AcceptedType<'_, Self::Remote>)) {

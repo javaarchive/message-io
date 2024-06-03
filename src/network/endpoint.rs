@@ -1,4 +1,4 @@
-use super::resource_id::{ResourceId};
+use super::{adapter::NetworkAddr, resource_id::ResourceId};
 
 use std::net::{SocketAddr};
 
@@ -7,7 +7,7 @@ use std::net::{SocketAddr};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Endpoint {
     resource_id: ResourceId,
-    addr: SocketAddr,
+    addr: NetworkAddr,
 }
 
 impl Endpoint {
@@ -51,7 +51,7 @@ impl Endpoint {
     ///
     /// assert_eq!((msg_1, msg_2), (23, 42));
     /// ```
-    pub fn from_listener(id: ResourceId, addr: SocketAddr) -> Self {
+    pub fn from_listener(id: ResourceId, addr: NetworkAddr) -> Self {
         // Only local resources allowed
         assert_eq!(id.resource_type(), super::resource_id::ResourceType::Local);
 
@@ -61,7 +61,7 @@ impl Endpoint {
         Endpoint::new(id, addr)
     }
 
-    pub(crate) fn new(resource_id: ResourceId, addr: SocketAddr) -> Self {
+    pub(crate) fn new(resource_id: ResourceId, addr: NetworkAddr) -> Self {
         Self { resource_id, addr }
     }
 
@@ -73,7 +73,7 @@ impl Endpoint {
     }
 
     /// Returns the peer address of the endpoint.
-    pub fn addr(&self) -> SocketAddr {
+    pub fn addr(&self) -> NetworkAddr {
         self.addr
     }
 }
@@ -92,7 +92,8 @@ mod tests {
 
     #[test]
     fn from_local_non_connection_oriented() {
-        let addr = "0.0.0.0:0".parse().unwrap();
+        let socket_addr = "0.0.0.0:0".parse().unwrap();
+        let addr = socket_addr.into();
         let generator = ResourceIdGenerator::new(Transport::Udp.id(), ResourceType::Local);
         Endpoint::from_listener(generator.generate(), addr);
     }

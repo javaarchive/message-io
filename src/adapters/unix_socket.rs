@@ -107,13 +107,15 @@ impl Remote for StreamRemoteResource {
         
         match UnixStream::connect(stream_config.path) {
             Ok(stream) => {
+                let local_addr = stream.local_addr()?;
+                let peer_addr = stream.peer_addr()?;
                 Ok(ConnectionInfo {
                     remote: Self {
                         stream
                     },
                     // the unixstream uses SocketAddr from mio that can't be converted
-                    local_addr: create_null_socketaddr(), // stream.local_addr()?,
-                    peer_addr: create_null_socketaddr() // stream.peer_addr()?.into(),
+                    local_addr: local_addr.into(),
+                    peer_addr: peer_addr.into(),
                 })
             },
             Err(err) => {
@@ -218,7 +220,7 @@ impl Local for StreamLocalResource {
             },
             // same issue as above my change in https://github.com/tokio-rs/mio/pull/1749
             // relevant issue https://github.com/tokio-rs/mio/issues/1527
-            local_addr: create_null_socketaddr(),
+            local_addr: local_addr.into(),
         })
     }
 
@@ -264,10 +266,13 @@ impl Remote for DatagramRemoteResource {
 
         let datagram = UnixDatagram::unbound()?;
         datagram.connect(config.path)?;
+
+        let local_addr = datagram.local_addr()?;
+        let peer_addr = datagram.peer_addr()?;
         
         Ok(ConnectionInfo {
-            local_addr: create_null_socketaddr(),
-            peer_addr: create_null_socketaddr(),
+            local_addr: local_addr.into(),
+            peer_addr: peer_addr.into(),
             remote: Self {
                 datagram
             }
@@ -345,13 +350,14 @@ impl Local for DatagramLocalResource {
         };
 
         let listener = UnixDatagram::bind(&config.path)?;
+        let local_addr = listener.local_addr()?;
 
         Ok(ListeningInfo {
             local: Self {
                 listener,
                 bind_path: config.path
             },
-            local_addr: create_null_socketaddr(),
+            local_addr: local_addr.into(),
         })
     }
 
