@@ -63,7 +63,9 @@ impl ToRemoteAddr for NetworkAddr {
             NetworkAddr::IP(ip) => {
                 Ok(RemoteAddr::Socket(ip.clone()))
             },
+            #[cfg(feature = "unixsocket")]
             NetworkAddr::Unix(_) => panic!("Tried to convert a Unix address to a RemoteAddr"),
+            #[cfg(feature = "websocket")]
             NetworkAddr::WebSocket(url) => {
                 Ok(RemoteAddr::Str(url.to_string()))
             },
@@ -80,6 +82,7 @@ impl From<SocketAddr> for NetworkAddr {
     }
 }
 
+#[cfg(feature = "unixsocket")]
 impl From<mio::net::SocketAddr> for NetworkAddr {
     fn from(addr: mio::net::SocketAddr) -> Self {
         Self::Unix(addr)
