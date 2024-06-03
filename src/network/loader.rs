@@ -5,7 +5,7 @@ use super::resource_id::{ResourceId};
 use super::poll::{Poll, Readiness};
 use super::remote_addr::{RemoteAddr};
 use super::driver::{NetEvent, Driver, ActionController, EventProcessor};
-use super::adapter::{Adapter, SendStatus};
+use super::adapter::{Adapter, NetworkAddr, SendStatus};
 
 use std::net::{SocketAddr};
 use std::io::{self};
@@ -67,16 +67,16 @@ impl ActionController for UnimplementedDriver {
     fn connect_with(
         &self,
         _: TransportConnect,
-        _: RemoteAddr,
-    ) -> io::Result<(Endpoint, SocketAddr)> {
+        _: NetworkAddr,
+    ) -> io::Result<(Endpoint, NetworkAddr)> {
         panic!("{}", UNIMPLEMENTED_DRIVER_ERR);
     }
 
     fn listen_with(
         &self,
         _: TransportListen,
-        _: SocketAddr,
-    ) -> io::Result<(ResourceId, SocketAddr)> {
+        _: NetworkAddr,
+    ) -> io::Result<(ResourceId, NetworkAddr)> {
         panic!("{}", UNIMPLEMENTED_DRIVER_ERR);
     }
 

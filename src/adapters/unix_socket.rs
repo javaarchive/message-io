@@ -1,8 +1,7 @@
 #![allow(unused_variables)]
 
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
 use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
 
@@ -97,7 +96,7 @@ pub fn check_stream_ready(stream: &UnixStream) -> PendingStatus{
 impl Remote for StreamRemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        remote_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
 
         let stream_config = match config {
@@ -204,7 +203,7 @@ impl Drop for StreamLocalResource {
 impl Local for StreamLocalResource {
     type Remote = StreamRemoteResource;
 
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
         let config = match config {
             TransportListen::UnixStreamSocket(config) => config,
             _ => panic!("Internal error: Got wrong config"),
@@ -257,7 +256,7 @@ impl Resource for DatagramRemoteResource {
 impl Remote for DatagramRemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        remote_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
         let config = match config {
             TransportConnect::UnixSocketDatagram(config) => config,
@@ -343,7 +342,7 @@ impl Resource for DatagramLocalResource {
 impl Local for DatagramLocalResource {
     type Remote = DatagramRemoteResource;
 
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
         let config = match config {
             TransportListen::UnixDatagramSocket(config) => config,
             _ => panic!("Internal error: Got wrong config"),

@@ -2,10 +2,12 @@ use crate::network::transport::{TransportConnect, TransportListen};
 
 use super::remote_addr::{RemoteAddr};
 use super::poll::{Readiness};
+use super::ToRemoteAddr;
 
 use mio::event::{Source};
+use strum::Display;
 
-use std::net::{SocketAddr};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::io::{self};
 
 /// High level trait to represent an adapter for a transport protocol.
@@ -35,35 +37,39 @@ pub trait Resource: Send + Sync {
 
 
 
-#[derive(Debug)]
+#[derive(Hash, Debug, Eq, PartialEq, Clone, Display)]
 pub enum NetworkAddr {
     IP(SocketAddr),
     #[cfg(feature = "unixsocket")]
     Unix(mio::net::SocketAddr),
     #[cfg(feature = "websocket")]
     WebSocket(url::Url),
+    Str(String),
 }
 
-impl PartialEq for NetworkAddr {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::IP(l0), Self::IP(r0)) => l0 == r0,
-            (Self::Unix(l0), Self::Unix(r0)) => {
-                // this might not check if family is same
-                l0.as_pathname() == r0.as_pathname()
-            },
-            (Self::WebSocket(l0), Self::WebSocket(r0)) => l0 == r0,
-            _ => false,
+impl Into<SocketAddr> for NetworkAddr {
+    fn into(self) -> SocketAddr {
+        if let NetworkAddr::IP(addr) = self {
+            addr
+        } else {
+            panic!("NetworkAddr is not an IP address");
         }
     }
 }
 
-impl Clone for NetworkAddr {
-    fn clone(&self) -> Self {
+impl ToRemoteAddr for NetworkAddr {
+    fn to_remote_addr(&self) -> io::Result<RemoteAddr> {
         match self {
-            Self::IP(arg0) => Self::IP(arg0.clone()),
-            Self::Unix(arg0) => Self::Unix(arg0.clone()),
-            Self::WebSocket(arg0) => Self::WebSocket(arg0.clone()),
+            NetworkAddr::IP(ip) => {
+                Ok(RemoteAddr::Socket(ip.clone()))
+            },
+            NetworkAddr::Unix(_) => panic!("Tried to convert a Unix address to a RemoteAddr"),
+            NetworkAddr::WebSocket(url) => {
+                Ok(RemoteAddr::Str(url.to_string()))
+            },
+            NetworkAddr::Str(str) => {
+                Ok(RemoteAddr::Str(str.clone()))
+            },
         }
     }
 }
@@ -174,7 +180,7 @@ pub trait Remote: Resource + Sized {
     /// It also must return the extracted address as `SocketAddr`.
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        remote_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>>;
 
     /// Called when a remote resource received an event.
@@ -251,7 +257,7 @@ pub trait Local: Resource + Sized {
     /// The [`TransportListen`] wraps custom transport options for transports that support it. It
     /// is guaranteed by the upper level to be of the variant matching the adapter. Therefore other
     /// variants can be safely ignored.
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>>;
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>>;
 
     /// Called when a local resource received an event.
     /// It means that some resource have tried to connect.
@@ -270,7 +276,7 @@ pub trait Local: Resource + Sized {
     ///
     /// The **implementator** must **only** implement this function if the local resource can
     /// also send data.
-    fn send_to(&self, _addr: SocketAddr, _data: &[u8]) -> SendStatus {
+    fn send_to(&self, _addr: NetworkAddr, _data: &[u8]) -> SendStatus {
         panic!("Adapter not configured to send messages directly from the local resource")
     }
 }

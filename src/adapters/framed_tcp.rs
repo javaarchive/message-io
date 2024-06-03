@@ -1,10 +1,9 @@
 pub use socket2::{TcpKeepalive};
 
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
-use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
+use crate::network::{Readiness, RemoteAddr, ToRemoteAddr, TransportConnect, TransportListen};
 use crate::util::encoding::{self, Decoder, MAX_ENCODED_SIZE};
 
 use mio::net::{TcpListener, TcpStream};
@@ -82,12 +81,13 @@ impl Resource for RemoteResource {
 impl Remote for RemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
         let config = match config {
             TransportConnect::FramedTcp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
+        let remote_addr = addr.to_remote_addr()?;
         let peer_addr = *remote_addr.socket_addr();
         let stream = TcpStream::connect(peer_addr)?;
         let local_addr = stream.local_addr()?;
@@ -194,12 +194,13 @@ impl Resource for LocalResource {
 impl Local for LocalResource {
     type Remote = RemoteResource;
 
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
         let config = match config {
             TransportListen::FramedTcp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
-        let listener = TcpListener::bind(addr)?;
+        let socketaddr: SocketAddr = addr.into();
+        let listener = TcpListener::bind(socketaddr)?;
         let local_addr = listener.local_addr().unwrap();
         Ok(ListeningInfo {
             local: { LocalResource { listener, keepalive: config.keepalive } },

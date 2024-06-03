@@ -30,6 +30,8 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use std::io::{self};
 
+use crate::network::adapter::NetworkAddr;
+
 /// Create a network instance giving its controller and processor.
 pub fn split() -> (NetworkController, NetworkProcessor) {
     let mut drivers = DriverLoader::default();
@@ -100,9 +102,9 @@ impl NetworkController {
     pub fn connect(
         &self,
         transport: Transport,
-        addr: impl ToRemoteAddr,
-    ) -> io::Result<(Endpoint, SocketAddr)> {
-        self.connect_with(transport.into(), addr)
+        addr: NetworkAddr,
+    ) -> io::Result<(Endpoint, NetworkAddr)> {
+        self.connect_with(transport.into(), addr.into())
     }
 
     /// Creates a connection to the specified address with custom transport options for transports
@@ -151,9 +153,9 @@ impl NetworkController {
     pub fn connect_with(
         &self,
         transport_connect: TransportConnect,
-        addr: impl ToRemoteAddr,
-    ) -> io::Result<(Endpoint, SocketAddr)> {
-        let addr = addr.to_remote_addr().unwrap();
+        addr: NetworkAddr,
+    ) -> io::Result<(Endpoint, NetworkAddr)> {
+        // let remoteaddr = addr.to_remote_addr().unwrap();
         self.controllers[transport_connect.id() as usize].connect_with(transport_connect, addr).map(
             |(endpoint, addr)| {
                 log::trace!("Connect to {}", endpoint);
@@ -198,8 +200,8 @@ impl NetworkController {
     pub fn connect_sync(
         &self,
         transport: Transport,
-        addr: impl ToRemoteAddr,
-    ) -> io::Result<(Endpoint, SocketAddr)> {
+        addr: NetworkAddr,
+    ) -> io::Result<(Endpoint, NetworkAddr)> {
         self.connect_sync_with(transport.into(), addr)
     }
 
@@ -242,8 +244,8 @@ impl NetworkController {
     pub fn connect_sync_with(
         &self,
         transport_connect: TransportConnect,
-        addr: impl ToRemoteAddr,
-    ) -> io::Result<(Endpoint, SocketAddr)> {
+        addr: NetworkAddr,
+    ) -> io::Result<(Endpoint, NetworkAddr)> {
         let (endpoint, addr) = self.connect_with(transport_connect, addr)?;
         loop {
             std::thread::sleep(Duration::from_millis(1));
@@ -270,7 +272,7 @@ impl NetworkController {
         &self,
         transport: Transport,
         addr: impl ToSocketAddrs,
-    ) -> io::Result<(ResourceId, SocketAddr)> {
+    ) -> io::Result<(ResourceId, NetworkAddr)> {
         self.listen_with(transport.into(), addr)
     }
 
@@ -285,9 +287,9 @@ impl NetworkController {
         &self,
         transport_listen: TransportListen,
         addr: impl ToSocketAddrs,
-    ) -> io::Result<(ResourceId, SocketAddr)> {
+    ) -> io::Result<(ResourceId, NetworkAddr)> {
         let addr = addr.to_socket_addrs().unwrap().next().unwrap();
-        self.controllers[transport_listen.id() as usize].listen_with(transport_listen, addr).map(
+        self.controllers[transport_listen.id() as usize].listen_with(transport_listen, NetworkAddr::IP(addr)).map(
             |(resource_id, addr)| {
                 log::trace!("Listening at {} by {}", addr, resource_id);
                 (resource_id, addr)

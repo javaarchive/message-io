@@ -4,7 +4,7 @@ use std::net::{SocketAddr};
 
 /// Information to identify the remote endpoint.
 /// The endpoint is used mainly as a connection identified.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Endpoint {
     resource_id: ResourceId,
     addr: NetworkAddr,
@@ -74,7 +74,7 @@ impl Endpoint {
 
     /// Returns the peer address of the endpoint.
     pub fn addr(&self) -> NetworkAddr {
-        self.addr
+        self.addr.clone()
     }
 }
 
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn from_local_non_connection_oriented() {
-        let socket_addr = "0.0.0.0:0".parse().unwrap();
+        let socket_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
         let addr = socket_addr.into();
         let generator = ResourceIdGenerator::new(Transport::Udp.id(), ResourceType::Local);
         Endpoint::from_listener(generator.generate(), addr);

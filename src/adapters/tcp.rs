@@ -1,8 +1,7 @@
 pub use socket2::{TcpKeepalive};
 
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
 use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
 
@@ -102,13 +101,14 @@ impl Resource for RemoteResource {
 impl Remote for RemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        network_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
         let config = match config {
             TransportConnect::Tcp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
-        let peer_addr = *remote_addr.socket_addr();
+        // let peer_addr = *remote_addr.socket_addr();
+        let peer_addr: SocketAddr = network_addr.into();
 
         let socket = Socket::new(
             match peer_addr {
@@ -155,8 +155,8 @@ impl Remote for RemoteResource {
         let local_addr = stream.local_addr()?;
         Ok(ConnectionInfo {
             remote: Self { stream, keepalive: config.keepalive },
-            local_addr,
-            peer_addr,
+            local_addr: local_addr.into(),
+            peer_addr: peer_addr.into(),
         })
     }
 
@@ -263,14 +263,16 @@ impl Resource for LocalResource {
 impl Local for LocalResource {
     type Remote = RemoteResource;
 
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
         let config = match config {
             TransportListen::Tcp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
 
+        let socketaddr: SocketAddr = addr.into();
+
         let socket = Socket::new(
-            match addr {
+            match socketaddr {
                 SocketAddr::V4 { .. } => Domain::IPV4,
                 SocketAddr::V6 { .. } => Domain::IPV6,
             },
@@ -299,7 +301,7 @@ impl Local for LocalResource {
             }
         }
 
-        socket.bind(&addr.into())?;
+        socket.bind(&socketaddr.into())?;
         socket.listen(LISTENER_BACKLOG)?;
 
         let listener = TcpListener::from_std(socket.into());
@@ -307,7 +309,7 @@ impl Local for LocalResource {
         let local_addr = listener.local_addr().unwrap();
         Ok(ListeningInfo {
             local: { LocalResource { listener, keepalive: config.keepalive } },
-            local_addr,
+            local_addr: local_addr.into(),
         })
     }
 

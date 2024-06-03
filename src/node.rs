@@ -132,10 +132,10 @@ impl StoredNetEvent {
     /// Use this `StoredNetEvent` as a `NetEvent` referencing its data.
     pub fn borrow(&self) -> NetEvent<'_> {
         match self {
-            Self::Connected(endpoint, status) => NetEvent::Connected(*endpoint, *status),
-            Self::Accepted(endpoint, id) => NetEvent::Accepted(*endpoint, *id),
-            Self::Message(endpoint, data) => NetEvent::Message(*endpoint, data),
-            Self::Disconnected(endpoint) => NetEvent::Disconnected(*endpoint),
+            Self::Connected(endpoint, status) => NetEvent::Connected(endpoint.clone(), *status),
+            Self::Accepted(endpoint, id) => NetEvent::Accepted(endpoint.clone(), *id),
+            Self::Message(endpoint, data) => NetEvent::Message(endpoint.clone(), data),
+            Self::Disconnected(endpoint) => NetEvent::Disconnected(endpoint.clone()),
         }
     }
 }

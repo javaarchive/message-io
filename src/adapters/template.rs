@@ -1,8 +1,7 @@
 #![allow(unused_variables)]
 
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
 use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
 
@@ -27,7 +26,7 @@ impl Resource for RemoteResource {
 impl Remote for RemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        remote_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
         todo!()
     }
@@ -55,7 +54,7 @@ impl Resource for LocalResource {
 impl Local for LocalResource {
     type Remote = RemoteResource;
 
-    fn listen_with(config: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
+    fn listen_with(config: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
         todo!()
     }
 

@@ -1,8 +1,7 @@
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
-use crate::network::{RemoteAddr, Readiness};
+use crate::network::{Readiness, RemoteAddr, ToRemoteAddr};
 use crate::util::thread::{OTHER_THREAD_ERR};
 use crate::network::{TransportConnect, TransportListen};
 
@@ -79,9 +78,9 @@ impl Resource for RemoteResource {
 impl Remote for RemoteResource {
     fn connect_with(
         _: TransportConnect,
-        remote_addr: RemoteAddr,
+        network_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
-        let (peer_addr, url) = match remote_addr {
+        let (peer_addr, url) = match network_addr.to_remote_addr()? {
             RemoteAddr::Socket(addr) => {
                 (addr, Url::parse(&format!("ws://{addr}/message-io-default")).unwrap())
             }
@@ -196,7 +195,8 @@ impl Remote for RemoteResource {
                         return tcp_status
                     }
                     let stream_backup = stream.clone();
-                    match ws_connect(url, stream) {
+                    // Note: I added this fix myself because in some cases this was not compiling, not sure how this was originally broken.
+                    match ws_connect(url.to_string(), stream) {
                         Ok((web_socket, _)) => {
                             *state = RemoteState::WebSocket(web_socket);
                             PendingStatus::Ready
@@ -332,8 +332,8 @@ impl Resource for LocalResource {
 impl Local for LocalResource {
     type Remote = RemoteResource;
 
-    fn listen_with(_: TransportListen, addr: SocketAddr) -> io::Result<ListeningInfo<Self>> {
-        let listener = TcpListener::bind(addr)?;
+    fn listen_with(_: TransportListen, addr: NetworkAddr) -> io::Result<ListeningInfo<Self>> {
+        let listener = TcpListener::bind(addr.into())?;
         let local_addr = listener.local_addr().unwrap();
         Ok(ListeningInfo { local: LocalResource { listener }, local_addr: local_addr.into() })
     }

@@ -1,6 +1,5 @@
 use crate::network::adapter::{
-    Resource, Remote, Local, Adapter, SendStatus, AcceptedType, ReadStatus, ConnectionInfo,
-    ListeningInfo, PendingStatus,
+    AcceptedType, Adapter, ConnectionInfo, ListeningInfo, Local, NetworkAddr, PendingStatus, ReadStatus, Remote, Resource, SendStatus
 };
 use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
 
@@ -149,14 +148,14 @@ impl Resource for RemoteResource {
 impl Remote for RemoteResource {
     fn connect_with(
         config: TransportConnect,
-        remote_addr: RemoteAddr,
+        remote_addr: NetworkAddr,
     ) -> io::Result<ConnectionInfo<Self>> {
         let config = match config {
             TransportConnect::Udp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
 
-        let peer_addr = *remote_addr.socket_addr();
+        let peer_addr: SocketAddr = remote_addr.into();
 
         let socket = Socket::new(
             match peer_addr {
@@ -295,21 +294,25 @@ impl Local for LocalResource {
 
     fn listen_with(
         config: TransportListen,
-        #[cfg(not(target_os = "linux"))] addr: SocketAddr,
-        #[cfg(target_os = "linux")] mut addr: SocketAddr,
+        #[cfg(not(target_os = "linux"))] addr: NetworkAddr,
+        #[cfg(target_os = "linux")] mut addr: NetworkAddr,
     ) -> io::Result<ListeningInfo<Self>> {
         let config = match config {
             TransportListen::Udp(config) => config,
             _ => panic!("Internal error: Got wrong config"),
         };
 
-        let multicast = match addr {
+        let mut socketaddr: SocketAddr = addr.into();
+
+        let multicast = match socketaddr {
             SocketAddr::V4(addr) if addr.ip().is_multicast() => Some(addr),
             _ => None,
         };
 
+        
+
         let socket = Socket::new(
-            match addr {
+            match socketaddr {
                 SocketAddr::V4 { .. } => Domain::IPV4,
                 SocketAddr::V6 { .. } => Domain::IPV6,
             },
@@ -330,7 +333,7 @@ impl Local for LocalResource {
         #[cfg(target_os = "linux")]
         let ingress_addresses = if config.receive_broadcasts {
             // enable the socket packet info option
-            match addr {
+            match socketaddr {
                 SocketAddr::V4 { .. } => {
                     socket::setsockopt(socket.as_raw_fd(), sockopt::Ipv4PacketInfo, &true)?
                 }
@@ -339,6 +342,10 @@ impl Local for LocalResource {
                 }
             }
 
+            let ip = {
+                socketaddr.ip()
+            };
+
             // find ifaddr matching the listen addr
             let ifaddr = getifaddrs()?.find_map(|ifaddr| {
                 ifaddr.address.and_then(|ss| {
@@ -346,8 +353,8 @@ impl Local for LocalResource {
                         ss.as_sockaddr_in().map(|si| Ipv4Addr::from(si.ip())),
                         ss.as_sockaddr_in6().map(|si| si.ip()),
                     ) {
-                        (Some(ip4), _) if IpAddr::V4(ip4) == addr.ip() => Some(ifaddr),
-                        (_, Some(ip6)) if IpAddr::V6(ip6) == addr.ip() => Some(ifaddr),
+                        (Some(ip4), _) if IpAddr::V4(ip4) == ip => Some(ifaddr),
+                        (_, Some(ip6)) if IpAddr::V6(ip6) == ip => Some(ifaddr),
                         _ => None,
                     }
                 })
@@ -357,7 +364,7 @@ impl Local for LocalResource {
                 None => return Err(ErrorKind::AddrNotAvailable.into()),
                 Some(ifaddr) => {
                     // Get allowed ingress IP addresses
-                    let mut ingress_addresses = vec![addr.ip()];
+                    let mut ingress_addresses = vec![ip];
 
                     // Some interfaces like VPN adapters don't have broadcast support.
                     if let Some(broadcast_ss) = ifaddr.broadcast {
@@ -378,7 +385,7 @@ impl Local for LocalResource {
                     )?;
 
                     // Listen on UNSPECIFIED
-                    addr.set_ip(match addr {
+                    socketaddr.set_ip(match socketaddr {
                         SocketAddr::V4 { .. } => Ipv4Addr::UNSPECIFIED.into(),
                         SocketAddr::V6 { .. } => Ipv6Addr::UNSPECIFIED.into(),
                     });
@@ -393,10 +400,10 @@ impl Local for LocalResource {
 
         if let Some(multicast) = multicast {
             socket.join_multicast_v4(multicast.ip(), &Ipv4Addr::UNSPECIFIED)?;
-            socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, addr.port()).into())?;
+            socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, socketaddr.port()).into())?;
         }
         else {
-            socket.bind(&addr.into())?;
+            socket.bind(&socketaddr.into())?;
         }
 
         let socket = UdpSocket::from_std(socket.into());
@@ -435,8 +442,9 @@ impl Local for LocalResource {
         }
     }
 
-    fn send_to(&self, addr: SocketAddr, data: &[u8]) -> SendStatus {
-        send_packet(data, |data| self.socket.send_to(data, addr))
+    fn send_to(&self, addr: NetworkAddr, data: &[u8]) -> SendStatus {
+        let netaddr = addr.into();
+        send_packet(data, |data| self.socket.send_to(data, netaddr))
     }
 }
 
