@@ -25,7 +25,7 @@ websocket = ["tungstenite", "url", "tcp"]
 unixsocket = ["mio/net", "socket2"] # TODO: check if this is really needed
 
 [dependencies]
-mio = { git = "https://github.com/javaarchive/mio.git", branch = "messageio-patches" }
+mio = { git = "https://github.com/javaarchive/mio.git", branch = "messageio-patches", features = ["os-poll"] }
 serde = { version = "1.0", features = ["derive"] }
 crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
