@@ -185,7 +185,6 @@ impl Remote for StreamRemoteResource {
 pub(crate) struct StreamLocalResource {
     listener: UnixListener,
     bind_path: PathBuf,
-    reply_streams: RwLock<HashMap<mio::net::SocketAddr, UnixStream>>,
 }
 
 impl Resource for StreamLocalResource {
@@ -220,7 +219,6 @@ impl Local for StreamLocalResource {
             local: Self {
                 listener,
                 bind_path: config.path,
-                reply_streams: RwLock::new(HashMap::new()),
             },
             // same issue as above my change in https://github.com/tokio-rs/mio/pull/1749
             // relevant issue https://github.com/tokio-rs/mio/issues/1527
@@ -240,49 +238,6 @@ impl Local for StreamLocalResource {
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,
                 Err(ref err) if err.kind() == ErrorKind::Interrupted => continue,
                 Err(err) => break log::error!("unix socket accept error: {}", err), // Should not happen
-            }
-        }
-    }
-
-    // nearly impossible to implement
-    fn send_to(&self, addr: NetworkAddr, data: &[u8]) -> SendStatus {
-        let socketaddr: mio::net::SocketAddr = match addr {
-            NetworkAddr::Unix(addr) => addr,
-            _ => panic!("Internal error: Got wrong addr"),
-        };
-        let mut reply_streams = self.reply_streams.write().expect("reply stream locking failed");
-        let mut stream = match reply_streams.get(&socketaddr) {
-            Some(stream) => {
-                stream
-            },
-            None => {
-                let stream = match UnixStream::connect_addr(&socketaddr) {
-                    Ok(stream) => stream,
-                    Err(err) => {
-                        log::error!("unix socket send_to error: {}", err);
-                        return SendStatus::ResourceNotFound;
-                    }
-                };
-                reply_streams.insert(socketaddr, stream);
-                reply_streams.get(&socketaddr).unwrap()
-            },
-        };
-        // from udp.rs
-        loop {
-            match stream.write(data) {
-                Ok(_) => break SendStatus::Sent,
-                // Avoid ICMP generated error to be logged
-                Err(ref err) if err.kind() == ErrorKind::ConnectionRefused => {
-                    break SendStatus::ResourceNotFound
-                }
-                Err(ref err) if err.kind() == ErrorKind::WouldBlock => continue,
-                Err(ref err) if err.kind() == ErrorKind::Other => {
-                    break SendStatus::MaxPacketSizeExceeded
-                }
-                Err(err) => {
-                    log::error!("UDP send error: {}", err);
-                    break SendStatus::ResourceNotFound // should not happen
-                }
             }
         }
     }

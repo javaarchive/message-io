@@ -25,7 +25,7 @@ websocket = ["tungstenite", "url", "tcp"]
 unixsocket = ["mio/net", "socket2"] # TODO: check if this is really needed
 
 [dependencies]
-mio = { version = "0.8", features = ["os-poll"] }
+mio = { git = "https://github.com/javaarchive/mio.git", branch = "messageio-patches" }
 serde = { version = "1.0", features = ["derive"] }
 crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
@@ -37,8 +37,8 @@ url = { version = "2.2", optional = true }
 integer-encoding = "3.0.2"
 lazy_static = "1.4.0"
 
-[patch.crates-io]
-mio = { git = "https://github.com/javaarchive/mio.git", branch = "messageio-patches" }
+# [patch.crates-io]
+# mio = { git = "https://github.com/javaarchive/mio.git", branch = "messageio-patches" }
 
 [target.'cfg(target_os = "linux")'.dependencies.nix]
 version = "0.26.2"
