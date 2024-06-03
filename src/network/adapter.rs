@@ -33,6 +33,13 @@ pub trait Resource: Send + Sync {
     fn source(&mut self) -> &mut dyn Source;
 }
 
+
+pub enum NetworkAddr {
+    IP(SocketAddr),
+    #[cfg(feature = "unixsocket")]
+    Unix(mio::net::SocketAddr)
+}
+
 /// Plain struct used as a returned value of [`Remote::connect_with()`]
 pub struct ConnectionInfo<R: Remote> {
     /// The new created remote resource
