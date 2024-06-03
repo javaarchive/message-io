@@ -7,13 +7,16 @@ use crate::network::{RemoteAddr, Readiness, TransportConnect, TransportListen};
 
 use mio::event::{Source};
 use mio::net::{UnixDatagram, UnixListener, UnixStream};
+use socket2::Socket;
 
+use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::io::{self, ErrorKind, Read, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::sync::{Arc, Mutex, RwLock};
 
 // Note: net.core.rmem_max = 212992 by default on linux systems
 // not used because w euse unixstream I think?
@@ -181,7 +184,8 @@ impl Remote for StreamRemoteResource {
 
 pub(crate) struct StreamLocalResource {
     listener: UnixListener,
-    bind_path: PathBuf
+    bind_path: PathBuf,
+    reply_streams: RwLock<HashMap<mio::net::SocketAddr, UnixStream>>,
 }
 
 impl Resource for StreamLocalResource {
@@ -215,7 +219,8 @@ impl Local for StreamLocalResource {
         Ok(ListeningInfo {
             local: Self {
                 listener,
-                bind_path: config.path
+                bind_path: config.path,
+                reply_streams: RwLock::new(HashMap::new()),
             },
             // same issue as above my change in https://github.com/tokio-rs/mio/pull/1749
             // relevant issue https://github.com/tokio-rs/mio/issues/1527
@@ -226,10 +231,12 @@ impl Local for StreamLocalResource {
     fn accept(&self, mut accept_remote: impl FnMut(AcceptedType<'_, Self::Remote>)) {
         loop {
             match self.listener.accept() {
-                Ok((stream, addr)) => accept_remote(AcceptedType::Remote(
-                    create_null_socketaddr(), // TODO: provide correct address
-                    StreamRemoteResource { stream },
-                )),
+                Ok((stream, addr)) => {
+                    accept_remote(AcceptedType::Remote(
+                        create_null_socketaddr(), // TODO: provide correct address
+                        StreamRemoteResource { stream },
+                    ))
+                },
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,
                 Err(ref err) if err.kind() == ErrorKind::Interrupted => continue,
                 Err(err) => break log::error!("unix socket accept error: {}", err), // Should not happen
@@ -238,9 +245,47 @@ impl Local for StreamLocalResource {
     }
 
     // nearly impossible to implement
-    // fn send_to(&self, addr: SocketAddr, data: &[u8]) -> SendStatus {
-    //        
-    // }
+    fn send_to(&self, addr: NetworkAddr, data: &[u8]) -> SendStatus {
+        let socketaddr: mio::net::SocketAddr = match addr {
+            NetworkAddr::Unix(addr) => addr,
+            _ => panic!("Internal error: Got wrong addr"),
+        };
+        let mut reply_streams = self.reply_streams.write().expect("reply stream locking failed");
+        let mut stream = match reply_streams.get(&socketaddr) {
+            Some(stream) => {
+                stream
+            },
+            None => {
+                let stream = match UnixStream::connect_addr(&socketaddr) {
+                    Ok(stream) => stream,
+                    Err(err) => {
+                        log::error!("unix socket send_to error: {}", err);
+                        return SendStatus::ResourceNotFound;
+                    }
+                };
+                reply_streams.insert(socketaddr, stream);
+                reply_streams.get(&socketaddr).unwrap()
+            },
+        };
+        // from udp.rs
+        loop {
+            match stream.write(data) {
+                Ok(_) => break SendStatus::Sent,
+                // Avoid ICMP generated error to be logged
+                Err(ref err) if err.kind() == ErrorKind::ConnectionRefused => {
+                    break SendStatus::ResourceNotFound
+                }
+                Err(ref err) if err.kind() == ErrorKind::WouldBlock => continue,
+                Err(ref err) if err.kind() == ErrorKind::Other => {
+                    break SendStatus::MaxPacketSizeExceeded
+                }
+                Err(err) => {
+                    log::error!("UDP send error: {}", err);
+                    break SendStatus::ResourceNotFound // should not happen
+                }
+            }
+        }
+    }
 }
 
 pub(crate) struct DatagramRemoteResource {
