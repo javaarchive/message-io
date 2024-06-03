@@ -3,6 +3,8 @@ use serde::{Serialize, Deserialize};
 use std::net::{SocketAddr, ToSocketAddrs, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::io::{self};
 
+use super::adapter::NetworkAddr;
+
 /// An struct that contains a remote address.
 /// It can be Either, a [`SocketAddr`] as usual or a `String` used for protocols
 /// that needs more than a `SocketAddr` to get connected (e.g. WebSocket)
@@ -13,6 +15,15 @@ use std::io::{self};
 pub enum RemoteAddr {
     Socket(SocketAddr),
     Str(String),
+}
+
+impl Into<NetworkAddr> for RemoteAddr {
+    fn into(self) -> NetworkAddr {
+        match self {
+            RemoteAddr::Socket(addr) => addr.into(),
+            RemoteAddr::Str(string) => NetworkAddr::Str(string),
+        }
+    }
 }
 
 impl RemoteAddr {

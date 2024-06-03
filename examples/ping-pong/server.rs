@@ -23,9 +23,10 @@ pub fn run(transport: Transport, addr: SocketAddr) {
     listener.for_each(move |event| match event.network() {
         NetEvent::Connected(_, _) => (), // Only generated at connect() calls.
         NetEvent::Accepted(endpoint, _listener_id) => {
+            let addr = endpoint.addr();
             // Only connection oriented protocols will generate this event
             clients.insert(endpoint, ClientInfo { count: 0 });
-            println!("Client ({}) connected (total clients: {})", endpoint.addr(), clients.len());
+            println!("Client ({}) connected (total clients: {})", addr, clients.len());
         }
         NetEvent::Message(endpoint, input_data) => {
             let message: FromClientMessage = bincode::deserialize(&input_data).unwrap();

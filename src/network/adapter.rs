@@ -236,14 +236,14 @@ pub enum AcceptedType<'a, R> {
     /// [`Remote::receive()`]).
     /// A [`crate::network::NetEvent::Accepted`] will be generated once this remote resource
     /// is considered *ready*.
-    Remote(SocketAddr, R),
+    Remote(NetworkAddr, R),
 
     /// The listener has accepted data that can be packed into a message from a specified addr.
     /// Despite of `Remote`, accept as a `Data` will not register any Remote.
     /// This will produce a [`crate::network::NetEvent::Message`] event.
     /// The endpoint of this event will be unique containing the specified addr and the listener
     /// whom generates it.
-    Data(SocketAddr, &'a [u8]),
+    Data(NetworkAddr, &'a [u8]),
 }
 
 /// The resource used to represent a local listener.

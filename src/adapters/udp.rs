@@ -280,7 +280,7 @@ impl LocalResource {
                     };
 
                     let data = &mut input_buffer[..size];
-                    accept_remote(AcceptedType::Data(addr, data))
+                    accept_remote(AcceptedType::Data(addr.into(), data))
                 }
                 Err(Errno::EWOULDBLOCK) => break,
                 Err(err) => break log::error!("UDP accept error: {}", err), // Should never happen
@@ -434,7 +434,7 @@ impl Local for LocalResource {
             match self.socket.recv_from(&mut input_buffer) {
                 Ok((size, addr)) => {
                     let data = &mut input_buffer[..size];
-                    accept_remote(AcceptedType::Data(addr, data))
+                    accept_remote(AcceptedType::Data(addr.into(), data))
                 }
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,
                 Err(err) => break log::error!("UDP accept error: {}", err), // Should never happen

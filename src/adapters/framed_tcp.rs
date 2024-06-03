@@ -212,7 +212,7 @@ impl Local for LocalResource {
         loop {
             match self.listener.accept() {
                 Ok((stream, addr)) => accept_remote(AcceptedType::Remote(
-                    addr,
+                    addr.into(),
                     RemoteResource::new(stream, self.keepalive.clone()),
                 )),
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,

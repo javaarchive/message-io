@@ -231,7 +231,7 @@ impl Local for StreamLocalResource {
             match self.listener.accept() {
                 Ok((stream, addr)) => {
                     accept_remote(AcceptedType::Remote(
-                        create_null_socketaddr(), // TODO: provide correct address
+                        NetworkAddr::Unix(addr), // TODO: provide correct address
                         StreamRemoteResource { stream },
                     ))
                 },
@@ -368,7 +368,7 @@ impl Local for DatagramLocalResource {
             match self.listener.recv_from(&mut input_buffer) {
                 Ok((size, addr)) => {
                     let data = &mut input_buffer[..size];
-                    accept_remote(AcceptedType::Data(create_null_socketaddr(), data))
+                    accept_remote(AcceptedType::Data(NetworkAddr::Unix(addr), data))
                 }
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,
                 Err(err) => break log::error!("Unix datagram socket accept error: {}", err), // Should never happen

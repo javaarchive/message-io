@@ -347,7 +347,7 @@ impl Local for LocalResource {
                             stream.into(),
                         )))),
                     };
-                    accept_remote(AcceptedType::Remote(addr, remote));
+                    accept_remote(AcceptedType::Remote(addr.into(), remote));
                 }
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => break,
                 Err(ref err) if err.kind() == ErrorKind::Interrupted => continue,

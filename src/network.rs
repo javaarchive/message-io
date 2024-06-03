@@ -467,8 +467,8 @@ mod tests {
         controller.remove(listener_id);
 
         let (endpoint, _) = controller.connect(transport, addr).unwrap();
-        assert_eq!(controller.send(endpoint, &[42]), SendStatus::ResourceNotAvailable);
-        assert!(!controller.is_ready(endpoint.resource_id()).unwrap());
+        assert_eq!(controller.send(endpoint.clone(), &[42]), SendStatus::ResourceNotAvailable);
+        assert!(!controller.is_ready(endpoint.clone().resource_id()).unwrap());
 
         let mut was_disconnected = false;
         processor.process_poll_events_until_timeout(*LOCALHOST_CONN_TIMEOUT, |net_event| {
