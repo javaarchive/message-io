@@ -79,7 +79,7 @@ fn throughput_message_io(transport: Transport, packet_size: usize) {
 
     let start_time = Instant::now();
     while handler.is_running() {
-        handler.network().send(endpoint, &message);
+        handler.network().send(endpoint.clone(), &message);
     }
 
     let end_time = r_time.recv().unwrap();
@@ -236,7 +236,7 @@ fn throughput_native_ws(packet_size: usize) {
             .name("sender".into())
             .spawn(move || {
                 let url_addr = format!("ws://{}/socket", addr);
-                let (mut sender, _) = ws_connect(Url::parse(&url_addr).unwrap()).unwrap();
+                let (mut sender, _) = ws_connect(Url::parse(&url_addr).unwrap().to_string()).unwrap();
                 let start_time = Instant::now();
                 while total_sent < EXPECTED_BYTES {
                     sender.write_message(Message::Binary(message.clone())).unwrap();
