@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.8.11"
-source = "git+https://github.com/javaarchive/mio.git?branch=messageio-patches#fa36fb4b9ac17aff870cd750efc5a1b117b9b8b9"
+source = "git+https://github.com/javaarchive/mio.git?branch=messageio-patches#0d73bff16ba34c9e119f79ff08717562cacd4878"
 dependencies = [
  "libc",
  "log",

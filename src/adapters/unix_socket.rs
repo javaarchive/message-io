@@ -382,7 +382,7 @@ impl Local for DatagramLocalResource {
             _ => panic!("Internal error: Got wrong addr type for unix datagram socket send_to"),
         };
         // from udp.rs
-        let path = unix_addr.try_get_pathname().expect("I can't send to this.");
+        let path = unix_addr.try_get_pathname().expect(&format!("I can't send to this. {:#?}", unix_addr.address()));
         loop {
             match self.listener.send_to(data, path) {
                 Ok(_) => break SendStatus::Sent,
