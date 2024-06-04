@@ -263,8 +263,13 @@ impl Remote for DatagramRemoteResource {
             _ => panic!("Internal error: Got wrong config"),
         };
 
-        let datagram = UnixDatagram::unbound()?;
-        datagram.connect(config.path)?;
+        let connect_to_path = match remote_addr {
+            NetworkAddr::Path(path) => path,
+            _ => panic!("Internal error: Got wrong addr type for unix datagram socket connect_with"),
+        };
+
+        let datagram = UnixDatagram::bind(&config.path)?;
+        datagram.connect(connect_to_path)?;
 
         let local_addr = datagram.local_addr()?;
         let peer_addr = datagram.peer_addr()?;

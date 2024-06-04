@@ -9,6 +9,7 @@ use strum::Display;
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::io::{self};
+use std::path::PathBuf;
 
 /// High level trait to represent an adapter for a transport protocol.
 /// The adapter is only used to identify the resources of your adapter.
@@ -42,6 +43,8 @@ pub enum NetworkAddr {
     IP(SocketAddr),
     #[cfg(feature = "unixsocket")]
     Unix(mio::net::SocketAddr),
+    #[cfg(feature = "unixsocket")]
+    Path(PathBuf),
     #[cfg(feature = "websocket")]
     WebSocket(url::Url),
     Str(String),
@@ -65,6 +68,8 @@ impl ToRemoteAddr for NetworkAddr {
             },
             #[cfg(feature = "unixsocket")]
             NetworkAddr::Unix(_) => panic!("Tried to convert a Unix address to a RemoteAddr"),
+            #[cfg(feature = "unixsocket")]
+            NetworkAddr::Path(_) => panic!("Tried to convert a Path address to a RemoteAddr"),
             #[cfg(feature = "websocket")]
             NetworkAddr::WebSocket(url) => {
                 Ok(RemoteAddr::Str(url.to_string()))
