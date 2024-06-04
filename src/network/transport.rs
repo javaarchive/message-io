@@ -118,7 +118,7 @@ impl Transport {
             #[cfg(feature = "unixsocket")]
             Transport::UnixSocketStream => true,
             #[cfg(feature = "unixsocket")]
-            Transport::UnixSocketDatagram => false,
+            Transport::UnixSocketDatagram => true,
         }
     }
 
